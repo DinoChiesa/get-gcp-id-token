@@ -1,0 +1,16 @@
+{
+  "name": "get-gcp-id-token-with-service-account",
+  "version": "1.0.1",
+  "description": "get a GCP ID Token, using a JSON-encoded Service Account key",
+  "main": "getIdTokenWithServiceAccount.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "dchiesa@google.com",
+  "license": "Apache-2.0",
+  "dependencies": {
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
