@@ -296,26 +296,23 @@ account. The payload of the JWT must look like the following:
 
 The expiry claim must be present and must be no more than 5 minutes after the issued-at time.
 
-The code in this repo shows you how to do that, in shell script, nodejs and in Java.
-
-There are currently these examples here:
+The code in this repo shows you how to do that, in a shell script, python, nodejs and in Java.
 
 * [**get-id-token-for-service-account.sh**](./sh/get-id-token-for-service-account.sh) - a bash script that gets
-  an ID token using a service account key (*see note below).
+  an ID token using a service account key
 
 * [**getIdTokenWithServiceAccount.py**](./py/getIdTokenWithServiceAccount.py) - a python
   script that gets an ID token for a specific audience, using a service
-  account key. (*see note below).
+  account key.
 
 * [**getIdTokenWithServiceAccount.js**](./node/getIdTokenWithServiceAccount.js) - a [nodejs](https://nodejs.org/en/)
   script that gets an ID token for a specific audience, using a service
-  account key. (*see note below).
+  account key.
 
 * [**GetIdTokenWithServiceAccount.java**](./java/src/main/java/com.google.examples.tokens/GetIdTokenWithServiceAccount.java) - a
-  java program that gets an ID token for a specific audience, using a service account key. (*see note
-  below).
+  java program that gets an ID token for a specific audience, using a service account key.
 
-> * Note: using any of the service account samples requires a service account key file in JSON format, containing the private key of the service account. Be aware that [Google recommends against](https://cloud.google.com/docs/authentication#auth-decision-tree) creating and downloading service account keys, if you can avoid it.
+> * Note: using any of the service account samples requires a service account key file in JSON format, containing the private key of the service account. In case you missed the warnings above, I'll repeat that [Google recommends against](https://cloud.google.com/docs/authentication#auth-decision-tree) creating and downloading service account keys, if you can avoid it.
 
 ## Pre-requisite for any of the following examples: create your service account key
 
