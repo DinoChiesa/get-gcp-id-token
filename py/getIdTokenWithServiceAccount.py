@@ -1,4 +1,4 @@
-# getIdToken.py
+# getIdTokenWithServiceAccount.py
 # ------------------------------------------------------------------
 #
 # A Python script that emulates the functionality of the provided
