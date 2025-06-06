@@ -28,25 +28,36 @@ GCP issues ID tokens are JWT signed with RSA. The signed payload if an ID token 
 
 ## What are ID tokens good for?
 
-An ID token is required to invoke Cloud Run, if it is protected by IAP.  A
-request must pass in the ID token in the Authorization header of an HTTP
-request. Using curl, that would look like so:
+If you have a Cloud Run service and it is not configured to [allow unauthenticated
+access](https://cloud.google.com/run/docs/authenticating/public), then an ID token
+is required to invoke it.
+
+This is true whether or not the Cloud Run service is protected by IAP.  A request
+must pass in the ID token in the Authorization header of an HTTP request. Using
+curl, that would look like so:
 
 ```sh
 curl -i -H "Authorization: Bearer $ID_TOKEN" https://SERVICE_NAME-PROJECT_ID.REGION.run.app/
 ```
 
-If you interactively visit a Cloud Run endpoint within a browser window, IAP
+If you interactively visit an IAP-protected Cloud Run endpoint within a browser window, IAP
 will automatically redirect you to login interactively, and then bring you back
-to the Cloud Run endpoint.  That part is easy.
+to the Cloud Run endpoint. That part is easy.
 
-But if you want a headless system outside of Google Cloud to invoke a Cloud Run system,
-that system must obtain an ID token, and it cannot "interactively login"!
+If you interactively visit a Cloud Run endpoint within a browser window which is
+not protected by IAP, then your Cloud Run service needs to handle the login
+experience.
 
+But if you want a headless system outside of Google Cloud to invoke a Cloud Run
+system, that system must obtain an ID token, and it will not "interactively
+login"!  So your calling system needs to pro-actively obtain its own ID token.
+This repo will explore that a little later. Before we get to that, let's cover a
+little more background.
 
 ## Decoding tokens
 
-Decode the ID token, as you would decode any signed JWT. Split by dots, then base64-decode the first two sections to decode it.
+Decode the ID token, as you would decode any signed JWT. Split by dots, then
+base64-decode the first two sections to decode it.
 
 Or use an online tool [like this one](https://dinochiesa.github.io/jwt/) to decode your ID Token.
 
@@ -81,7 +92,8 @@ Token, also known as an identity token.  You can get an Access token for a user,
 for a service account.
 
 Google APIs (*.googleapis.com) accept _access tokens_ when authorizing
-administrative requests. But other systems, notably Cloud Run and Cloud Functions, if they are configured to NOT allow unauthenticated access, require [_ID
+administrative requests. But other systems, notably Cloud Run and Cloud Functions,
+if they are configured to NOT allow unauthenticated access, require [_ID
 tokens_](https://cloud.google.com/docs/authentication/get-id-token) as the
 credential.
 
@@ -100,8 +112,7 @@ In general the pattern is:
   and Cloud Functions, then if you've enabled "Authorization", you should use an
   ID Token.
 
-
-OK that is all I will say in this repo  about Access Tokens. The rest of this document will
+OK that is all I will say in this repo about Access Tokens. The rest of this document will
 talk about ID tokens.
 
 
@@ -117,7 +128,8 @@ From here on out, I'm going to be talking about getting an ID token on behalf of
 | using a service-account key and a special OAuthV2 grant, invoking oauth2.googleapis.com                    | Recommended only when none of the above apply.                                                                                           |
 
 
-There are various libraries and frameworks, but basically they all are wrappers on these token acquisition methods.
+There are various libraries and frameworks available for different programming
+languages, but basically they all are wrappers on these token acquisition methods.
 
 Below I'll describe some of these approaches in more detail.
 
