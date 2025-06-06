@@ -214,26 +214,29 @@ can thus get an ID token for itself.
 
 ## The Metadata endpoint
 
-This way is very simpler: send a GET request to an endpoint and get an ID token
+This way is simpler: send a GET request to an endpoint and get an ID token
 back. This is documented [here](https://cloud.google.com/docs/authentication/get-id-token#metadata-server).
 
 It looks like this:
 
 ```sh
 query="audience=${CLOUD_RUN_ENDPOINT}"
-curl -X GET -H "Metadata-Flavor": "Google" \
+curl -X GET -H "Metadata-Flavor: Google" \
   "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?${query}""
 ```
 
-But the catch is, this works if and only if the command is run from a Google
-Compute Engine (GCE) instance. It can be from a raw VM, or a Cloud Run app, or a
-Cloud Shell instance... or an Apigee API proxy!
+But the catch is, this works only if the command is run from a Google
+Compute Engine (GCE) instance. It can be from a raw VM, or a Cloud Run app,
+... or an Apigee API proxy!
+
+> If you invoke that curl command from a Cloud Shell instance, you will get an
+> ID token identifying _you_.
 
 This request gets an ID token for the service account which is used by the
 underlying GCE instance. Every VM in Google Cloud has a service account
 identity; it will use "the default" SA identity, or one you specify.  This call
 relies on that inherent identity, and it won't work if you try invoking that
-endpoint from your laptop, or cloud shell, or a build server that runs outside
+endpoint from your laptop, or a build server that runs outside
 of GCP.
 
 As above, you do not need to create or download or reference or manage a service account
@@ -266,7 +269,9 @@ content-type: application/x-www-form-urlencoded
 assertion=ASSERTION&grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer
 ```
 
-The ASSERTION must be a JWT signed with the private key belonging to the service account. The payload of the JWT must look like the following:
+The ASSERTION must be a JWT signed with the private key belonging to the service
+account. The payload of the JWT must look like the following:
+
 ```json
 {
   "iss": "sheet-writer-1@dchiesa-argolis-2.iam.gserviceaccount.com",
@@ -277,7 +282,7 @@ The ASSERTION must be a JWT signed with the private key belonging to the service
 }
 ```
 
-The  expiry claim must be present and must be no more than 5 minutes after the issued-at time.
+The expiry claim must be present and must be no more than 5 minutes after the issued-at time.
 
 The code in this repo shows you how to do that, in shell script, nodejs and in Java.
 
@@ -300,7 +305,7 @@ There are currently these examples here:
 
 > * Note: using any of the service account samples requires a service account key file in JSON format, containing the private key of the service account. Be aware that [Google recommends against](https://cloud.google.com/docs/authentication#auth-decision-tree) creating and downloading service account keys, if you can avoid it.
 
-## Pre-requisite for any of the following examples: create your service account key 
+## Pre-requisite for any of the following examples: create your service account key
 
 To set up, you need a service account JSON file containing the private key of
 the service account.
@@ -347,6 +352,7 @@ That thing is a secret. Protect it as such.
 
 That is all one-time setup stuff.
 
+You could do all of this with gcloud, too. 
 
 
 ## (bash) get-id-token-for-service-account.sh
