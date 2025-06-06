@@ -30,6 +30,22 @@ b64_nopadding() {
     printf "%s" "$value" | base64 "$B64OPTION" | sed 's/=//g'
 }
 
+check_required_commands() {
+  local missing
+  missing=()
+  for cmd in "$@"; do
+    #printf "checking %s\n" "$cmd"
+    if ! command -v "$cmd" &>/dev/null; then
+      missing+=("$cmd")
+    fi
+  done
+  if [[ -n "$missing" ]]; then
+    printf -v joined '%s,' "${missing[@]}"
+    printf "\n\nThese commands are missing; they must be available on path: %s\nExiting.\n" "${joined%,}"
+    exit 1
+  fi
+}
+
 extract_json_field() {
     local field_name=$1
     local json_file=$2
@@ -67,6 +83,9 @@ create_signed_jwt() {
     jwt="$to_be_signed.$signature"
 }
 
+# ====================================================================
+check_required_commands curl base64 date sed tr openssl
+
 [[ -z "$1" || ! -f "$1" ]] && printf "pass a service account key file.\n" && exit 1
 [[ -z "$2" ]] && printf "pass in a target audience.\n" && exit 1
 
@@ -75,7 +94,9 @@ audience="${2}"
 create_signed_jwt "$key_json_file" "$audience"
 
 OUTFILE=$(mktemp /tmp/get-gcp-access-token.out.XXXXXX)
-curl -s -X POST https://www.googleapis.com/oauth2/v4/token \
+token_uri=$(extract_json_field "token_uri" $key_json_file)
+
+curl -s -X POST "$token_uri" \
     --data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer' \
     --data-urlencode "assertion=$jwt" >"$OUTFILE" 2>&1
 

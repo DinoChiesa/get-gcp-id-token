@@ -2,7 +2,7 @@
 
 Prerequisites:
 - npm v10.x or later
-- nodejs v18.x or later
+- nodejs v20.x or later
 
 
 Install:

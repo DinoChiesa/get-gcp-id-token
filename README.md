@@ -296,9 +296,9 @@ account. The payload of the JWT must look like the following:
 
 The expiry claim must be present and must be no more than 5 minutes after the issued-at time.
 
-The code in this repo shows you how to do that, in a shell script, python, nodejs and in Java.
+The code in this repo shows you how to do that, in a bash script, in python, in nodejs, and in Java.
 
-* [**get-id-token-for-service-account.sh**](./sh/get-id-token-for-service-account.sh) - a bash script that gets
+* [**get-id-token-for-service-account.sh**](./bash/get-id-token-for-service-account.sh) - a bash script that gets
   an ID token using a service account key
 
 * [**getIdTokenWithServiceAccount.py**](./py/getIdTokenWithServiceAccount.py) - a python
@@ -379,7 +379,7 @@ The pre-requisities here are:
 There's no additional setup for the bash script. When you need a new access token, run the script:
 
 ```sh
-cd sh
+cd bash
 ./get-id-token-for-service-account.sh ~/Downloads/my-service-account-key.json MY_AUDIENCE_HERE
 ```
 
