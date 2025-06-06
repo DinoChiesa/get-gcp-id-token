@@ -1,7 +1,7 @@
 # Examples: How to Get a GCP ID Token
 
 This repo contains code examples that illustrate how to get a GCP ID token programmatically,
-specifically from a Service Account key file.
+sometimes using a Service Account key file, and sometimes not.
 
 Within Google Cloud, services you host in Cloud Run, or functions you host in Cloud Functions, or any service protected behind Identity Aware Proxy (IAP), rely on ID tokens for authentication. (These scenarios are summarized [here](https://cloud.google.com/docs/authentication/get-id-token))
 
@@ -352,7 +352,7 @@ That thing is a secret. Protect it as such.
 
 That is all one-time setup stuff.
 
-You could do all of this with gcloud, too. 
+You could do all of this with gcloud, too.
 
 
 ## (bash) get-id-token-for-service-account.sh
