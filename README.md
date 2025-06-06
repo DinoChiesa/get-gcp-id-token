@@ -202,13 +202,14 @@ Here again, this requires that the principal that obtained the access token
 `iam.serviceAccountTokenCreator` for the particular Service Account.  See the notes
 above for more on that.
 
-And yes, this also applies to the case where
-- an app has an access token for a Service Account
-- the app wants to get an ID token for the same Service Account.
+And yes, this also applies to the case where an app has an access token for a
+Service Account, and the app wants to get an ID token for the same Service
+Account.
 
-You must grant the service account, the "iam.serviceAccountTokenCreator" role on itself.
-And you can then pass a service account access token to that iamcredentials endpoint; a service
-account can thus get an ID token for itself.
+In this case, you must grant the service account, the
+"iam.serviceAccountTokenCreator" role _on itself_.  And you can then pass a
+service account access token to that iamcredentials endpoint; a service account
+can thus get an ID token for itself.
 
 
 ## The Metadata endpoint
