@@ -167,7 +167,7 @@ If you do not have the `roles/iam.serviceAccountAdmin` role, then you need to
 find someone who has Editor or Owner role in your GCP project to grant to you,
 the "serviceAccountUser" role on that particular service account.
 
-By The Way this also applies to the case where
+By the way, this also applies to the case where
 - an app has an access token for a Service Account
 - the app wants to get an ID token for the same Service Account.
 
@@ -186,7 +186,12 @@ make sense for production-deployed apps or systems.
 
 If you have an access token, and the access token is for a principal that has
 rights to impersonate a service account, you can use the access token to get an
-ID token for that service account. Just invoke the IAM credentials endpoint,
+ID token for that service account.
+
+This is documented [here](https://cloud.google.com/docs/authentication/get-id-token#impersonation).
+
+You do not need to create or download or reference or manage a service account
+_key file_ for this to work. To use this approach, just invoke the IAM credentials endpoint,
 passing your access token.  By doing this, you're asking the IAM service inside
 Google Cloud to issue a token for a service account that you have permissions to
 impersonate.
@@ -200,14 +205,19 @@ curl -i -X POST -H "Authorization: Bearer $ACCESS_TOKEN" \
 
 Here again, this requires that the principal that obtained the access token
 (probably you, if you used `gcloud auth print-access-token`) has the role
-`iam.serviceAccountUser` for the particular Service Account.  See the notes
+`iam.serviceAccountTokenCreator` for the particular Service Account.  See the notes
 above for more on that.
+
+And yes, you can pass a service account access token to that, so that a service
+account could get an ID token for itself.
 
 
 ## The Metadata endpoint
 
 This way is very simpler: send a GET request to an endpoint and get an ID token
-back. Like this:
+back. This is documented [here](https://cloud.google.com/docs/authentication/get-id-token#metadata-server).
+
+It looks like this:
 
 ```sh
 query="audience=${CLOUD_RUN_ENDPOINT}"
@@ -226,7 +236,7 @@ relies on that inherent identity, and it won't work if you try invoking that
 endpoint from your laptop, or cloud shell, or a build server that runs outside
 of GCP.
 
-You do not need to create or download or reference or manage a service account
+As above, you do not need to create or download or reference or manage a service account
 _key file_ for this to work.
 
 
