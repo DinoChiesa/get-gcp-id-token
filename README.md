@@ -140,27 +140,38 @@ a token you could eventually use when invoking a Cloud Run service, then you
 need to use _this_ gcloud command:
 
 ```sh
-sa_email="my-account-1@project-name.iam.gserviceaccount.com"
+project_id="id-of-my-gcp-project"
+sa_email="my-account-1@${project_id}.iam.gserviceaccount.com"
 gcloud auth print-identity-token \
    --impersonate-service-account="${sa_email}" \
    --audiences="https://service-hash-uc.a.run.app"
 ```
 
-To make the above possible, you must have the impersonation rights on that service account. The role required on
-the service account to grant that permission is `roles/iam.serviceAccountUser`.  The following command shows how you would grant yourself
-the correct permissions. This will work only if you have `roles/iam.serviceAccountAdmin` role in the project, in other words if you have the
-ability to adjust permissions on service accounts.
+To make the above possible, you must have the impersonation rights on that
+service account. The role required on the service account to grant that
+permission is `roles/iam.serviceAccountTokenCreator`.  The following command shows how
+you would grant yourself the correct permissions. This will work only if you
+have `roles/iam.serviceAccountAdmin` role in the project, in other words if you
+have the ability to adjust permissions on service accounts.
 
 ```
 gwhoami=$(gcloud auth list --filter=status:ACTIVE --format="value(account)")
+project_id="id-of-my-gcp-project"
 gcloud iam service-accounts add-iam-policy-binding ${sa_email} \
   --member user:${gwhoami} \
-  --role "roles/iam.serviceAccountUser"
+  --role "roles/iam.serviceAccountTokenCreator"
+  --project "${project_id}"
 ```
 
 If you do not have the `roles/iam.serviceAccountAdmin` role, then you need to
 find someone who has Editor or Owner role in your GCP project to grant to you,
 the "serviceAccountUser" role on that particular service account.
+
+By The Way this also applies to the case where
+- an app has an access token for a Service Account
+- the app wants to get an ID token for the same Service Account.
+
+You must grant the service account, the "iam.serviceAccountTokenCreator" role on itself.
 
 \*Above, I said that this method is primarily intended for use in an interactive
 environment.  I'm talking about a terminal or shell.  But that's not a strict
