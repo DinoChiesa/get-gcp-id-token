@@ -167,12 +167,6 @@ If you do not have the `roles/iam.serviceAccountAdmin` role, then you need to
 find someone who has Editor or Owner role in your GCP project to grant to you,
 the "serviceAccountUser" role on that particular service account.
 
-By the way, this also applies to the case where
-- an app has an access token for a Service Account
-- the app wants to get an ID token for the same Service Account.
-
-You must grant the service account, the "iam.serviceAccountTokenCreator" role on itself.
-
 \*Above, I said that this method is primarily intended for use in an interactive
 environment.  I'm talking about a terminal or shell.  But that's not a strict
 _requirement_.  Your nodejs script could use client_process to invoke that
@@ -208,8 +202,13 @@ Here again, this requires that the principal that obtained the access token
 `iam.serviceAccountTokenCreator` for the particular Service Account.  See the notes
 above for more on that.
 
-And yes, you can pass a service account access token to that, so that a service
-account could get an ID token for itself.
+And yes, this also applies to the case where
+- an app has an access token for a Service Account
+- the app wants to get an ID token for the same Service Account.
+
+You must grant the service account, the "iam.serviceAccountTokenCreator" role on itself.
+And you can then pass a service account access token to that iamcredentials endpoint; a service
+account can thus get an ID token for itself.
 
 
 ## The Metadata endpoint
