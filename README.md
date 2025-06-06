@@ -3,20 +3,21 @@
 This repo contains code examples that illustrate how to get a GCP ID token programmatically,
 specifically from a Service Account key file.
 
-Within Google Cloud, services you host in Cloud Run, or functions you host in Cloud Functions, and then protect with Identity Aware Proxy (IAP), rely on ID tokens for authentication.
+Within Google Cloud, services you host in Cloud Run, or functions you host in Cloud Functions, or any service protected behind Identity Aware Proxy (IAP), rely on ID tokens for authentication. (These scenarios are summarized [here](https://cloud.google.com/docs/authentication/get-id-token))
 
-> This is distinct from things that have api endpoints like _something_.googleapis.com; those systems require an Access Token, not an ID token.
+Things that have api endpoints like _something_.googleapis.com require an _Access Token_, not an ID token.
 
-If you want to administer Cloud Run, then you need an access token. If you want to invoke a Cloud Run service, then you need an ID Token.
+One good way to think about it, if you're focused on Cloud Run: If you want to administer Cloud Run, then you need an access token. If you want to invoke a Cloud Run service, then you need an ID Token.
 
 ## What does an ID token look like?
 
-The form of a GCP-issued ID token is an RSA-signed JWT. The signed payload looks like this:
+GCP issues ID tokens are JWT signed with RSA. The signed payload if an ID token for a service account looks like this:
+
 ```json
 {
-  "aud": "http://goo.bar",
-  "azp": "sheet-writer-1@dchiesa-argolis-2.iam.gserviceaccount.com",
-  "email": "sheet-writer-1@dchiesa-argolis-2.iam.gserviceaccount.com",
+  "aud": "http://audience-varies.foo.bar",
+  "azp": "name-of-service-account-1@my-gcp-project.iam.gserviceaccount.com",
+  "email": "name-of-service-account-1@my-gcp-project.iam.gserviceaccount.com",
   "email_verified": true,
   "exp": 1725484881,
   "iat": 1725481281,
@@ -39,7 +40,7 @@ If you interactively visit a Cloud Run endpoint within a browser window, IAP
 will automatically redirect you to login interactively, and then bring you back
 to the Cloud Run endpoint.  That part is easy.
 
-But if you want a system outside of Google Cloud to invoke a Cloud Run system,
+But if you want a headless system outside of Google Cloud to invoke a Cloud Run system,
 that system must obtain an ID token, and it cannot "interactively login"!
 
 
@@ -106,16 +107,27 @@ talk about ID tokens.
 
 ## Ways to Get an ID Token
 
-1. via the gcloud command line tool
-2. via the IAM credentials service
-3. via a REST "shortcut", using the metadata endpoint for Google Compute Engine.
-2. via a service-account key and a special OAuthV2 grant
+From here on out, I'm going to be talking about getting an ID token on behalf of a _service account_.
 
-There are various libraries and frameworks , but basically they all are wrappers on the token dispensing APIs.
+| approach                                                                                                 | recommended for...                                                                                                                  |
+|----------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| via the gcloud command line tool                                                                         | works for an individual user (like you, dear reader) and also for a service account. But primarily\* in an interactive environment. |
+| via the IAM credentials service (iamcredentials.googleapis.com)                                          | Works for any service that can invoke the endpoint. iamcredentials is available to systems outside of Google Cloud.                 |
+| via a REST "shortcut", using the metadata endpoint for Google Compute Engine. (metadata.google.internal) | For workloads running on GCE, including but not limited apps running directly in GCE VMs, Cloud Run,  or Cloud Functions.           |
+| using a service-account key and a special OAuthV2 grant, invoking oauth2.googleapis.com                    | Recommended only when none of the above apply.                                                                                           |
+
+
+There are various libraries and frameworks, but basically they all are wrappers on these token acquisition methods.
+
+Below I'll describe some of these approaches in more detail.
+
 
 ## The gcloud command line utility
 
-If you haven't met [the `gcloud` command)[https://cloud.google.com/sdk/docs/install], you need to.  It's super useful if you use anything in Google Cloud. To get an ID token for YOURSELF using the gcloud command, run this:
+If you haven't met [the `gcloud`
+command](https://cloud.google.com/sdk/docs/install), you need to.  It's super
+useful if you use anything in Google Cloud. To get an ID token for YOURSELF
+using the gcloud command, run this:
 
 ```sh
 gcloud auth print-identity-token
@@ -123,19 +135,50 @@ gcloud auth print-identity-token
 
 This ID token identifies YOU.
 
-If you want to get an ID token on behalf of a service account for use with a Cloud Run service, then you need to specify different options:
+If you want to use `gcloud` to get an ID token on behalf of _a service account_,
+a token you could eventually use when invoking a Cloud Run service, then you
+need to use _this_ gcloud command:
 
 ```sh
+sa_email="my-account-1@project-name.iam.gserviceaccount.com"
 gcloud auth print-identity-token \
-   --impersonate-service-account="my-account-1@project-name.iam.gserviceaccount.com" \
+   --impersonate-service-account="${sa_email}" \
    --audiences="https://service-hash-uc.a.run.app"
 ```
 
+To make the above possible, you must have the impersonation rights on that service account. The role required on
+the service account to grant that permission is `roles/iam.serviceAccountUser`.  The following command shows how you would grant yourself
+the correct permissions. This will work only if you have `roles/iam.serviceAccountAdmin` role in the project, in other words if you have the
+ability to adjust permissions on service accounts.
+
+```
+gwhoami=$(gcloud auth list --filter=status:ACTIVE --format="value(account)")
+gcloud iam service-accounts add-iam-policy-binding ${sa_email} \
+  --member user:${gwhoami} \
+  --role "roles/iam.serviceAccountUser"
+```
+
+If you do not have the `roles/iam.serviceAccountAdmin` role, then you need to
+find someone who has Editor or Owner role in your GCP project to grant to you,
+the "serviceAccountUser" role on that particular service account.
+
+\*Above, I said that this method is primarily intended for use in an interactive
+environment.  I'm talking about a terminal or shell.  But that's not a strict
+_requirement_.  Your nodejs script could use client_process to invoke that
+command.  Or your Java program or Python program could do something similar. But
+it would require that the `gcloud` tool be installed where the app is running,
+and that the app is running in a shell with an identity that can impersonate the
+desired service account. That might make sense during development but it doesn't
+make sense for production-deployed apps or systems.
 
 ## Via the IAM Credentials endpoint
 
-Invoke the IAM credentials endpoint. You're asking the IAM service inside
-Google Cloud to issue a token for a service account that you have permissions to impersonate.
+If you have an access token, and the access token is for a principal that has
+rights to impersonate a service account, you can use the access token to get an
+ID token for that service account. Just invoke the IAM credentials endpoint,
+passing your access token.  By doing this, you're asking the IAM service inside
+Google Cloud to issue a token for a service account that you have permissions to
+impersonate.
 
 ```sh
 ACCESS_TOKEN=$(gcloud auth print-access-token)
@@ -144,10 +187,15 @@ curl -i -X POST -H "Authorization: Bearer $ACCESS_TOKEN" \
   "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${sa_email}:generateIdToken"
 ```
 
+Here again, this requires that the principal that obtained the access token
+(probably you, if you used `gcloud auth print-access-token`) has the role
+`iam.serviceAccountUser` for the particular Service Account.  See the notes
+above for more on that.
+
 
 ## The Metadata endpoint
 
-This way is the simplest: send a GET request to an endpoint and get an ID token
+This way is very simpler: send a GET request to an endpoint and get an ID token
 back. Like this:
 
 ```sh
@@ -158,19 +206,36 @@ curl -X GET -H "Metadata-Flavor": "Google" \
 
 But the catch is, this works if and only if the command is run from a Google
 Compute Engine (GCE) instance. It can be from a raw VM, or a Cloud Run app, or a
-Cloud Shell instance... or an Apigee API!  This request gets an ID token for the
-service account which is used by the GCE instance. You do not need to create or
-download or reference a service account _key file_ for this to work. This call
-won't work if you try invoking that endpoint from your laptop, or a build server
-that runs outside of GCP.
+Cloud Shell instance... or an Apigee API proxy!
+
+This request gets an ID token for the service account which is used by the
+underlying GCE instance. Every VM in Google Cloud has a service account
+identity; it will use "the default" SA identity, or one you specify.  This call
+relies on that inherent identity, and it won't work if you try invoking that
+endpoint from your laptop, or cloud shell, or a build server that runs outside
+of GCP.
+
+You do not need to create or download or reference or manage a service account
+_key file_ for this to work.
 
 
-## Via the special `jwt-bearer` grant 
+## Using a key file, and the special `jwt-bearer` grant
 
-You can get an ID token on behalf of a service account if you possess the service account key file. 
-To do so, you must send a specially-formed signed JWT, to the /token endpoint. 
+You can get an ID token on behalf of a service account if you possess the service account key file.
+The use of downloaded [Service Account credentials](https://cloud.google.com/iam/docs/service-account-creds) is discouraged by Google, and it is not subtle.
 
-In more detail, the request-for-token looks like this: 
+> Caution: Service account keys are a security risk if not managed correctly. You should choose a more secure alternative to service account keys whenever possible. If you must authenticate with a service account key, you are responsible for the security of the private key and for other operations described by Best practices for managing service account keys. ...
+
+A main landing page describing the user of service account keys bears the title ["Migrate from service account keys"](https://cloud.google.com/iam/docs/migrate-from-service-account-keys), and the text there reads:
+
+> Service account keys are commonly used to authenticate to Google Cloud services. However, they can also become a security risk if they're not managed properly, increasing your vulnerability to threats like credential leakage, privilege escalation, information disclosure, and non-repudiation. In many cases, you can authenticate with more secure alternatives to service account keys.
+
+But it is still possible.
+To use this approach, you must send a specially-formed self-signed JWT, to the /token endpoint.
+
+This process is documented [here](https://cloud.google.com/iap/docs/authentication-howto#authenticate-service-account).
+
+In more detail, the request-for-token looks like this:
 
 ```
 POST https://oauth2.googleapis.com/token
@@ -180,7 +245,7 @@ content-type: application/x-www-form-urlencoded
 assertion=ASSERTION&grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer
 ```
 
-The ASSERTION must be a JWT signed with the private key belonging to the service account. The payload of the JWT must look like the following: 
+The ASSERTION must be a JWT signed with the private key belonging to the service account. The payload of the JWT must look like the following:
 ```json
 {
   "iss": "sheet-writer-1@dchiesa-argolis-2.iam.gserviceaccount.com",
@@ -191,14 +256,18 @@ The ASSERTION must be a JWT signed with the private key belonging to the service
 }
 ```
 
-The  expiry claim must be present and must be no more than 5 minutes after the issued-at time. 
+The  expiry claim must be present and must be no more than 5 minutes after the issued-at time.
 
-The code in this repo shows you how to do that, in shell script, nodejs and in Java. 
+The code in this repo shows you how to do that, in shell script, nodejs and in Java.
 
 There are currently these examples here:
 
 * [**get-id-token-for-service-account.sh**](./sh/get-id-token-for-service-account.sh) - a bash script that gets
   an ID token using a service account key (*see note below).
+
+* [**getIdTokenWithServiceAccount.py**](./py/getIdTokenWithServiceAccount.py) - a python
+  script that gets an ID token for a specific audience, using a service
+  account key. (*see note below).
 
 * [**getIdTokenWithServiceAccount.js**](./node/getIdTokenWithServiceAccount.js) - a [nodejs](https://nodejs.org/en/)
   script that gets an ID token for a specific audience, using a service
@@ -208,20 +277,9 @@ There are currently these examples here:
   java program that gets an ID token for a specific audience, using a service account key. (*see note
   below).
 
-> * Note: using any of the service account samples requires a service account key
-  file in JSON format, containing the private key of the service account. Be aware that [Google recommends against](https://cloud.google.com/docs/authentication#auth-decision-tree) creating and downloading service account keys, if you can avoid it.
+> * Note: using any of the service account samples requires a service account key file in JSON format, containing the private key of the service account. Be aware that [Google recommends against](https://cloud.google.com/docs/authentication#auth-decision-tree) creating and downloading service account keys, if you can avoid it.
 
-
-## (bash) get-id-token-for-service-account.sh
-
-This shows getting a token for a service account, in this
-case, from a bash script.
-
-The pre-requisities here are:
-* curl
-* base64
-* date, sed, tr
-* openssl
+## Pre-requisite for any of the following examples: create your service account key 
 
 To set up, you need a service account JSON file containing the private key of
 the service account.
@@ -248,7 +306,7 @@ Follow these steps for the one-time setup:
 
 9. Create
 
-9. download the JSON file to your local workstation. The result is something like this:
+9. download the JSON file to your local workstation. The contents will look something like this:
    ```json
    {
      "type": "service_account",
@@ -268,49 +326,91 @@ That thing is a secret. Protect it as such.
 
 That is all one-time setup stuff.
 
-Now, when you need a new access token, run the script:
+
+
+## (bash) get-id-token-for-service-account.sh
+
+This shows getting a token for a service account, in this
+case, from a bash script.
+
+The pre-requisities here are:
+* bash (obviously)
+* curl
+* base64
+* date, sed, tr
+* openssl
+
+There's no additional setup for the bash script. When you need a new access token, run the script:
 
 ```sh
 cd sh
 ./get-id-token-for-service-account.sh ~/Downloads/my-service-account-key.json MY_AUDIENCE_HERE
 ```
 
+## (python) getIdTokenWithServiceAccount
 
+This shows getting a token for a service account, from a python script.
+
+The pre-requisities here are:
+* python >=3.10
+
+You need a service account key json file; follow the steps described above.
+
+To create a token, invoke the node script specifying the downloaded key file:
+
+```sh
+cd py/
+# one-time install
+python -m venv .venv
+source .venv/bin/activate
+pip install "PyJWT[crypto]" requests
+
+# Subsequently
+source .venv/bin/activate
+python ./getIdTokenWithServiceAccount.py --audience https://foo-bar/bam \
+   --keyfile path-to-my/service-account-6f0f7bfd9658.json
+```
+
+The result will be a JSON response shaped something like this:
+
+```json
+{
+  "id_token": "eyJhbGciOiJSUzI..."
+}
+```
 
 ## (nodejs) getIdTokenWithServiceAccount
 
 This shows getting a token for a service account, from a nodejs script.
 
-You need a service account key json file. To get it, follow the steps to
-generate and download a json key file, as described for the bash example for
-service accounts above. If you've already done it for the bash example, you do
-not need to repeat that setup for this example.
+You need a service account key json file. See the instructions above.
 
-Now, as often as you need to create a token, run these steps:
+The pre-requisities here are:
+* [node >=20](https://nodejs.org/en/download)
+* npm
 
-1. invoke the node script specifying the downloaded key file
-   ```sh
-   cd node/
-   npm install
-   node ./getIdTokenWithServiceAccount.js -v  --keyfile ~/Downloads/my-service-account-key.json --audience FOO
-   ```
+To create a token, invoke the node script specifying the downloaded key file
 
-   The result will be a JSON response shaped something like this:
+```sh
+cd node/
+npm install
+node ./getIdTokenWithServiceAccount.js -v  --keyfile ~/Downloads/my-service-account-key.json --audience FOO
+```
 
-   ```json
-   {
-     "id_token": "ya29.c.b0AXv0zTPIXDh-FGN_hM4e....jN8H3fp50U............"
-   }
-   ```
+The result will be a JSON response shaped something like this:
+
+```json
+{
+  "id_token": "eyJhbGciOiJSUzI..."
+}
+```
+
 
 ## (java) GetIdTokenWithServiceAccount.java
 
-The pre-requisite here is a JDK v11 or later. And you need Apache maven v3.9 or later
+The pre-requisite here is a JDK v11 or later. And you need Apache maven v3.9 or later.
 
-You need a service account key json file. To get it, follow the steps to
-generate and download a json key file, as described for the bash example for
-service accounts above. If you've already done it for the bash example, you do
-not need to repeat that setup for this example.
+As above, you need a service account key json file. 
 
 Then, build and run the app. Follow these steps. I tested this on MacOS.
 
@@ -359,7 +459,7 @@ official Google product.
 
 ## License
 
-This material is [Copyright 2021-2024 Google LLC](./NOTICE).
+This material is [Copyright 2021-2025 Google LLC](./NOTICE).
 and is licensed under the [Apache 2.0 License](LICENSE).
 
 

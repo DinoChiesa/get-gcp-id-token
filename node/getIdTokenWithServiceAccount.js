@@ -1,7 +1,7 @@
 // getIdTokenWithServiceAccount.js
 // ------------------------------------------------------------------
 //
-// Copyright 2019-2024 Google LLC.
+// Copyright 2019-2025 Google LLC.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,10 +22,10 @@
 /* jshint esversion:9, node:true, strict:implied */
 /* global process, console, Buffer */
 
-const crypto = require("crypto"),
-  util = require("util"),
-  fs = require("fs"),
-  path = require("path");
+const crypto = require("node:crypto"),
+  util = require("node:util"),
+  fs = require("node:fs"),
+  path = require("node:path");
 
 const GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
 
@@ -64,13 +64,13 @@ function getGoogleAuthJwt({ options }) {
       aud: keyfile.token_uri,
       iat: nowInSeconds,
       exp: nowInSeconds + 60,
-      target_audience: options.audience
+      target_audience: options.audience,
     };
   logWrite("jwt payload: " + JSON.stringify(jwtClaims, null, 2));
 
   return Promise.resolve({
     options,
-    assertion: signJwt(jwtHeader, jwtClaims, keyfile.private_key)
+    assertion: signJwt(jwtHeader, jwtClaims, keyfile.private_key),
   });
 }
 
@@ -79,13 +79,13 @@ function redeemJwtForGcpToken(ctx) {
 
   const url = ctx.options.keyfile.token_uri,
     headers = {
-      "content-type": "application/x-www-form-urlencoded"
+      "content-type": "application/x-www-form-urlencoded",
     },
     method = "post",
     body = `grant_type=${GRANT_TYPE}&assertion=${ctx.assertion}`;
 
   return fetch(url, { method, headers, body }).then(
-    async (response) => await response.json()
+    async (response) => await response.json(),
   );
 }
 
@@ -136,7 +136,7 @@ function processArgs(args) {
 function usage() {
   const basename = path.basename(process.argv[1]);
   console.log(
-    `usage:\n  node ${basename} --keyfile SERVICE_ACCOUNT_KEYFILE --audience DESIRED_AUDIENCE\n`
+    `usage:\n  node ${basename} --keyfile SERVICE_ACCOUNT_KEYFILE --audience DESIRED_AUDIENCE\n`,
   );
 }
 
@@ -146,8 +146,8 @@ async function showTokenInfo(payload) {
       {
         method: "get",
         body: null,
-        headers: {}
-      }
+        headers: {},
+      },
     ),
     body = await response.json();
   console.log("\ntoken info:\n" + JSON.stringify(body, null, 2));
@@ -167,7 +167,7 @@ function main(args) {
           (payload) => (
             console.log("token response:\n" + JSON.stringify(payload, null, 2)),
             payload
-          )
+          ),
         )
         .then((payload) => showTokenInfo(payload))
         .catch((e) => console.log(util.format(e)));

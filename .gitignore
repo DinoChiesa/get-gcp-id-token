@@ -9,6 +9,7 @@ Icon
 **/#*#
 **/*~
 
+**/.venv/
 **/.notused/
 **/node_modules/
 **/target/
