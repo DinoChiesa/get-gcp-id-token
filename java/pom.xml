@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.google.examples.tokens</groupId>
   <artifactId>get-gcp-id-token</artifactId>
-  <version>20240904</version>
+  <version>20250606</version>
   <name>GetGcpIdTokenForServiceAccount</name>
   <url>http://maven.apache.org</url>
   <packaging>jar</packaging>
@@ -20,7 +20,7 @@
     <dependency>
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
-      <version>2.11.0</version>
+      <version>2.13.1</version>
     </dependency>
   </dependencies>
 
@@ -50,7 +50,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.13.0</version>
+        <version>3.14.0</version>
         <configuration>
           <showDeprecation>true</showDeprecation>
           <source>${java.version}</source>
@@ -79,9 +79,9 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
-        <version>3.4.1</version>
+        <version>3.5.1</version>
         <configuration>
-          <mainClass>com.google.examples.tokens.GetTokenWithServiceAccount</mainClass>
+          <mainClass>com.google.examples.tokens.GetIdTokenWithServiceAccount</mainClass>
           <cleanupDaemonThreads>false</cleanupDaemonThreads>
         </configuration>
       </plugin>
@@ -110,7 +110,7 @@
        <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>versions-maven-plugin</artifactId>
-        <version>2.17.1</version>
+        <version>2.18.0</version>
         <executions>
           <execution>
             <phase>compile</phase>

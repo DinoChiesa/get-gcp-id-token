@@ -297,20 +297,15 @@ account. The payload of the JWT must look like the following:
 The expiry claim must be present and must be no more than 5 minutes after the issued-at time.
 
 The code in this repo shows you how to do that, in a bash script, in python, in nodejs, and in Java.
+All of them generate an ID token for a specific audience, using a service account key.
 
-* [**get-id-token-for-service-account.sh**](./bash/get-id-token-for-service-account.sh) - a bash script that gets
-  an ID token using a service account key
-
-* [**getIdTokenWithServiceAccount.py**](./py/getIdTokenWithServiceAccount.py) - a python
-  script that gets an ID token for a specific audience, using a service
-  account key.
-
-* [**getIdTokenWithServiceAccount.js**](./node/getIdTokenWithServiceAccount.js) - a [nodejs](https://nodejs.org/en/)
-  script that gets an ID token for a specific audience, using a service
-  account key.
-
-* [**GetIdTokenWithServiceAccount.java**](./java/src/main/java/com.google.examples.tokens/GetIdTokenWithServiceAccount.java) - a
-  java program that gets an ID token for a specific audience, using a service account key.
+| language | link                                                                                      | comments                                                 |
+|----------|-------------------------------------------------------------------------------------------|----------------------------------------------------------|
+| bash     | [link](./bash/get-id-token-for-service-account.sh)                                        | relies on openssl, sed, curl, etc.                       |
+| python   | [link](./py/getIdTokenWithServiceAccount.py)                                              | uses `"PyJWT[crypto]"`,  `requests`                      |
+| nodejs   | [link](./node/getIdTokenWithServiceAccount.js)                                            | relies only on builtin modules.                          |
+| java     | [link](./java/src/main/java/com.google.examples.tokens/GetIdTokenWithServiceAccount.java) | dependencies: Java11, gson                               |
+| C#       | [link](./dotnet/GetGcpIdTokenForServiceAccount.cs)                                        | depends on: .NET 8.0 and System.IdentityModel.Tokens.Jwt |
 
 > * Note: using any of the service account samples requires a service account key file in JSON format, containing the private key of the service account. In case you missed the warnings above, I'll repeat that [Google recommends against](https://cloud.google.com/docs/authentication#auth-decision-tree) creating and downloading service account keys, if you can avoid it.
 
@@ -446,9 +441,9 @@ The result will be a JSON response shaped something like this:
 
 The pre-requisite here is a JDK v11 or later. And you need Apache maven v3.9 or later.
 
-As above, you need a service account key json file. 
+As above, you need a service account key json file.
 
-Then, build and run the app. Follow these steps. I tested this on MacOS.
+Then, build and run the app. Follow these steps. I tested this on Debian Linux and MacOS.
 
 1. verify your java version
    ```
@@ -474,7 +469,7 @@ Then, build and run the app. Follow these steps. I tested this on MacOS.
 
 3. run
    ```
-   java -jar ./target/get-gcp-id-token-1.0.1.jar --creds YOUR_KEY_FILE.json --audience FOO_BAR
+   java -jar ./target/get-gcp-id-token-20250606.jar --creds YOUR_KEY_FILE.json --audience FOO_BAR
    ```
 
    The result should be an ID token.
@@ -482,9 +477,46 @@ Then, build and run the app. Follow these steps. I tested this on MacOS.
 
    You can also tell the program to send the token to the tokeninfo endpoint:
    ```
-   java -jar ./target/get-gcp-access-token-1.0.1.jar --creds YOUR_KEY_FILE.json --audience FOO_BAR --inquire
+   java -jar ./target/get-gcp-id-token-20250606.jar --creds YOUR_KEY_FILE.json --audience FOO_BAR --inquire
    ```
 
+   ...and you should see the token info output.
+
+
+## (C#) GetGcpIdTokenForServiceAccount.cs
+
+Pre-requisites:
+- [.NET 8.0](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
+
+Dependencies:
+- [System.IdentityModel.Tokens.Jwt](https://www.nuget.org/packages/system.identitymodel.tokens.jwt/)
+
+As above, you need a service account key json file.
+
+Then, build and run the app. Follow these steps. I tested this on Linux/Debian
+
+1. verify your dotnet version
+   ```
+   cd dotnet
+   dotnet --version
+   ```
+
+   You should see v8.0.301 or later
+
+2. build
+   ```
+   dotnet add package System.IdentityModel.Tokens.Jwt
+   dotnet build
+   ```
+
+   This should show you some happy messages.
+
+3. run
+   ```
+   dotnet run Get-GCP-ID-Token.dll --keyfile YOUR_KEY_FILE.json  --audience DESIRED_AUDIENCE
+   ```
+
+   The result should be an ID token.
    ...and you should see the token info output.
 
 

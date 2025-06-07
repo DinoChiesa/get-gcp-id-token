@@ -1,4 +1,4 @@
-
+# macos
 **/Icon*
 **/Icon
 */Icon
@@ -9,11 +9,21 @@ Icon
 **/#*#
 **/*~
 
-**/.venv/
 **/.notused/
-**/node_modules/
-**/target/
 
+# node
+**/node_modules/
+
+# java
+**/target/
 **/*.class
+
+# dotnet
+**/bin/
+**/obj/
+
+# python
+**/.venv/
+
 
 **/client_secret_*.googleusercontent.com.json

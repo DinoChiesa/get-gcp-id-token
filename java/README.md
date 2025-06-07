@@ -4,4 +4,4 @@ build:
 mvn clean package
 
 run:
-java -jar ./target/get-gcp-id-token-20240904.jar --creds YOUR_KEY_FILE.json --audience FOO
+java -jar ./target/get-gcp-id-token-20250606.jar --creds YOUR_KEY_FILE.json --audience FOO
