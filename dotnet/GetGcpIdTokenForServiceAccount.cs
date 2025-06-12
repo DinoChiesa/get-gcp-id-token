@@ -1,3 +1,18 @@
+// Copyright © 2025 Google LLC.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
 using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
@@ -13,6 +28,11 @@ public class GetIdTokenWithServiceAccount
 {
     // A C# record to hold the parsed command-line arguments.
     private record Options(string KeyFile, string Audience);
+
+    private static readonly JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions
+    {
+        WriteIndented = true,
+    };
 
     // A C# class to represent the structure of the Google Service Account key file.
     private class ServiceAccountKey
@@ -59,15 +79,34 @@ public class GetIdTokenWithServiceAccount
                 var jwt = GenerateJwt(serviceAccountKey, options.Audience);
                 Console.WriteLine($"assertion: {jwt}\n");
 
+                // pretty-print: extract the payload,decode it, parse the JSON, and then re-serialize it with indentation.
+                using (
+                    var jsonDocument = JsonDocument.Parse(
+                        (new JwtSecurityTokenHandler()).ReadJwtToken(jwt).Payload.SerializeToJson()
+                    )
+                )
+                {
+                    Console.WriteLine(
+                        "payload of the above:\n"
+                            + JsonSerializer.Serialize(
+                                jsonDocument.RootElement,
+                                jsonSerializerOptions
+                            )
+                    );
+                }
+
+                // Console.WriteLine(
+                //     "payload:\n" + JsonSerializer.Serialize(payloadJson, jsonSerializerOptions)
+                // );
+
                 // 3. Redeem the JWT for an ID token.
                 var tokenResponse = await RedeemJwtForGoogleIdToken(
                     serviceAccountKey.TokenUri,
                     jwt
                 );
-                var optionsForPrettyPrint = new JsonSerializerOptions { WriteIndented = true };
                 Console.WriteLine(
-                    "token response:\n"
-                        + JsonSerializer.Serialize(tokenResponse, optionsForPrettyPrint)
+                    "\ntoken response:\n"
+                        + JsonSerializer.Serialize(tokenResponse, jsonSerializerOptions)
                 );
 
                 // 4. Get and show token info.
@@ -117,7 +156,6 @@ public class GetIdTokenWithServiceAccount
             SigningCredentials = signingCredentials,
             Claims = claims,
         };
-
         var securityToken = handler.CreateToken(tokenDescriptor);
         return handler.WriteToken(securityToken);
     }
@@ -168,9 +206,9 @@ public class GetIdTokenWithServiceAccount
         var jsonDocument = await JsonDocument.ParseAsync(
             await response.Content.ReadAsStreamAsync()
         );
-        var options = new JsonSerializerOptions { WriteIndented = true };
         Console.WriteLine(
-            "\ntoken info:\n" + JsonSerializer.Serialize(jsonDocument.RootElement, options)
+            "\ntoken info:\n"
+                + JsonSerializer.Serialize(jsonDocument.RootElement, jsonSerializerOptions)
         );
     }
 

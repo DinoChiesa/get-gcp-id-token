@@ -257,7 +257,8 @@ _key file_ for this to work.
 
 ## Using a key file, and the special `jwt-bearer` grant
 
-You can get an ID token on behalf of a service account if you possess the service account key file.
+You can get an ID token on behalf of a service account if _you have access to the service account key file._
+
 The use of downloaded [Service Account credentials](https://cloud.google.com/iam/docs/service-account-creds) is discouraged by Google, and it is not subtle.
 
 > Caution: Service account keys are a security risk if not managed correctly. You should choose a more secure alternative to service account keys whenever possible. If you must authenticate with a service account key, you are responsible for the security of the private key and for other operations described by Best practices for managing service account keys. ...
@@ -266,12 +267,40 @@ A main landing page describing the user of service account keys bears the title 
 
 > Service account keys are commonly used to authenticate to Google Cloud services. However, they can also become a security risk if they're not managed properly, increasing your vulnerability to threats like credential leakage, privilege escalation, information disclosure, and non-repudiation. In many cases, you can authenticate with more secure alternatives to service account keys.
 
-But it is still possible.
-To use this approach, you must send a specially-formed self-signed JWT, to the /token endpoint.
+Despite all of that, it is still possible.
+To use this approach, you must send a specially-formed self-signed JWT, to the `/token` endpoint. You will need
+the private key from the service account key file, in order to sign that JWT.
 
 This process is documented [here](https://cloud.google.com/iap/docs/authentication-howto#authenticate-service-account).
+Let's talk about how it works.
 
-In more detail, the request-for-token looks like this:
+First, cracking open a service account key file, you will see something like this:
+```json
+{
+  "type": "service_account",
+  "project_id": "dchiesa-argolis-2",
+  "private_key_id": "a8ef19f432a97fd3a09a5ffe2d7b36f709475387",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0...CkMyJHn\n-----END PRIVATE KEY-----\n",
+  "client_email": "sheet-writer-1@dchiesa-argolis-2.iam.gserviceaccount.com",
+  "client_id": "109425398799307325462",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/sheet-writer-1%40dchiesa-argolis-2.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
+```
+
+- `client_email` identifies the service account
+- `private_key` is generated specifically for this service account. Each service account may have more than one
+  private key.
+- `token_uri` is the endpoint you must POST to, in order to get a token
+- `client_x509_cert_url` is the endpoint at which any caller can retrieve X509 certificates that provide public keys corresponding
+  to the private key here. This will allow a system that receives a payload signed with this private key, to verify the signature.
+
+
+OK, that's just the content of the JSON-formatted Service Account Key file. Now let us look at how the contents will be used.
+The request-for-token looks like this:
 
 ```
 POST https://oauth2.googleapis.com/token
@@ -294,10 +323,41 @@ account. The payload of the JWT must look like the following:
 }
 ```
 
-The expiry claim must be present and must be no more than 5 minutes after the issued-at time.
+About the claims:
+- `iss` - this is the full email of the service account.
+- `aud` - the audience for this assertion; always the token endpoint.  Get this from `token_uri` in the service account key file.
+- `iat` - issued-at time. You should generate this at the time you are signing the assertion.
+- `exp` - the expiry claim must be present and must be no more than 5 minutes after the issued-at time.
+  This constraint assures the token issuance endpoint that the assertion is _recently signed_ , which
+  will prevent replay attacks.
+  This "5 minutes" is the upper threshold; assuming your system's clock is synched properly (most are, these days)
+  you could use "30 seconds from now" and be quite safe. You'll be signing the assertion and sending it,
+  which will take 2 or 3 seconds, pessimistically.
 
-The code in this repo shows you how to do that, in a bash script, in python, in nodejs, and in Java.
-All of them generate an ID token for a specific audience, using a service account key.
+- `target_audience` - This indicates who will be consuming the ID token you are
+  requesting.  If you are requesting an ID token for "anybody and nobody", you
+  can omit this, I think.  But if you want to use the ID token with something
+  like Cloud Run or Cloud Functions which requires authentication, then this
+  field must hold the base URI for that Cloud Run service. On the other hand if
+  you are going through IAP to reach Cloud Run\*, this will be the oauth2 client
+  id of the IAP.  Something like
+  `511582533367-vtrfdsroh4iv.apps.googleusercontent.com`. The way you learn this
+  is by running this command:
+
+  ```sh
+  gcloud compute backend-services describe "${BACKEND_SERVICE}" \
+     --project="${PROJECT}" \
+     --global \
+     --format="value(iap.oauth2ClientId)"
+  ```
+
+
+The code in this repo shows you how to construct the assertion, and sign it, and
+then exchange it for an ID token (POST to the `/token` endpoint), in various
+languages: bash script, python, nodejs, java, and c#.  All of them generate an
+assertion, for a specific audience, and sign it with a service account key. All
+of them post that assertion to the `/token` endpoint to retrieve the ID token.
+
 
 | language | link                                                                                      | comments                                                 |
 |----------|-------------------------------------------------------------------------------------------|----------------------------------------------------------|
@@ -472,15 +532,7 @@ Then, build and run the app. Follow these steps. I tested this on Debian Linux a
    java -jar ./target/get-gcp-id-token-20250606.jar --creds YOUR_KEY_FILE.json --audience FOO_BAR
    ```
 
-   The result should be an ID token.
-
-
-   You can also tell the program to send the token to the tokeninfo endpoint:
-   ```
-   java -jar ./target/get-gcp-id-token-20250606.jar --creds YOUR_KEY_FILE.json --audience FOO_BAR --inquire
-   ```
-
-   ...and you should see the token info output.
+   The result should show an ID token, and token info.
 
 
 ## (C#) GetGcpIdTokenForServiceAccount.cs

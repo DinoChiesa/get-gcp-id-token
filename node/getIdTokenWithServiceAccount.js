@@ -84,6 +84,10 @@ function redeemJwtForGcpToken(ctx) {
     method = "post",
     body = `grant_type=${GRANT_TYPE}&assertion=${ctx.assertion}`;
 
+  logWrite(
+    `\nRedemption: \n  POST ${ctx.options.keyfile.token_uri} \\\n    -d grant_type=${GRANT_TYPE} \\\n    -d assertion=${ctx.assertion}`,
+  );
+
   return fetch(url, { method, headers, body }).then(
     async (response) => await response.json(),
   );
@@ -165,7 +169,12 @@ function main(args) {
         .then(redeemJwtForGcpToken)
         .then(
           (payload) => (
-            console.log("token response:\n" + JSON.stringify(payload, null, 2)),
+            console.log(
+              "token response:\n" +
+                JSON.stringify(payload, null, 2) +
+                "\n\ntoken:\n" +
+                payload.id_token,
+            ),
             payload
           ),
         )

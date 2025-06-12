@@ -1,4 +1,4 @@
-// Copyright © 2024 Google LLC.
+// Copyright © 2025 Google LLC.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -105,7 +105,7 @@ public class GetIdTokenWithServiceAccount {
 
     String prettyPayload =
         payload.replace("{", "{\n  ").replace("}", "\n}").replaceAll(",", ",\n  ");
-    System.out.printf("jwt payload: %s\n\n", prettyPayload);
+    System.out.printf("assertion payload: %s\n\n", prettyPayload);
     String to_be_signed = String.format("%s.%s", base64UrlEncode(header), base64UrlEncode(payload));
     byte[] signature = getRSASignature(to_be_signed, private_key_string);
     return String.format("%s.%s", to_be_signed, base64UrlEncode(signature));
@@ -127,6 +127,14 @@ public class GetIdTokenWithServiceAccount {
   private static String httpPostToken(final String uri, String assertion)
       throws URISyntaxException, IOException, InterruptedException {
     Map<String, String> formData = new HashMap<String, String>();
+
+    System.out.printf(
+        "Redemption:\n"
+            + "  POST %s \\\n"
+            + "    -d grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer \\\n"
+            + "    -d assertion=%s\n",
+        uri, assertion);
+
     formData.put("assertion", assertion);
     formData.put("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer");
     HttpRequest request =
@@ -157,7 +165,11 @@ public class GetIdTokenWithServiceAccount {
   private static String getToken(String credsfile, String targetAudience) throws Exception {
     Map<String, String> credsfileMap = readCredsFileAsMap(credsfile);
     String signedJwt = getRSASignedJwt(credsfileMap, targetAudience);
+    System.out.printf("assertion: %s\n\n", signedJwt);
+
     String body = httpPostToken(credsfileMap.get("token_uri"), signedJwt);
+
+    System.out.printf("\nresponse body: %s\n\n", body);
 
     Gson gson = new Gson();
     Type t = new TypeToken<Map<String, Object>>() {}.getType();
@@ -202,15 +214,12 @@ public class GetIdTokenWithServiceAccount {
       }
       String audience = null;
       String credsfile = null;
-      boolean wantInquire = false;
+
       for (int i = 0; i < L; i++) {
         String arg = args[i];
         switch (arg) {
           case "--audience":
             audience = args[++i];
-            break;
-          case "--inquire":
-            wantInquire = true;
             break;
           case "--creds":
             credsfile = args[++i];
@@ -227,11 +236,10 @@ public class GetIdTokenWithServiceAccount {
         throw new BadParamsException("missing required argument: --creds");
       }
       String token = getToken(credsfile, audience);
-      System.out.printf("id token: %s\n", token);
+      System.out.printf("\nid token: %s\n", token);
 
-      if (wantInquire) {
-        showTokenInfo(token);
-      }
+      showTokenInfo(token);
+
     } catch (BadParamsException bpe) {
       System.out.println("Exception:" + bpe.getMessage());
       usage();

@@ -43,7 +43,7 @@ def create_signed_jwt(key_data, audience):
         "target_audience": audience
     }
 
-    print("JWT Payload:\n" + json.dumps(claims, indent=2))
+    print("Assertion Payload:\n" + json.dumps(claims, indent=2))
 
     # Sign the JWT with the private key
     signed_jwt = jwt.encode(
@@ -58,6 +58,10 @@ def redeem_jwt_for_id_token(key_data, signed_assertion):
     """Exchanges the signed JWT for a Google Cloud ID token."""
 
     print("\nSigned Assertion:\n" + signed_assertion)
+
+    print(f"\nRedemption:\n  POST '{key_data["token_uri"]}' \\")
+    print(f"    -d \"grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer\"\\")
+    print(f"    -d \"assertion={signed_assertion}\n")
 
     # Make the requets to the token URI
     response = requests.post(
@@ -110,6 +114,7 @@ def main():
 
             # 3. Get and display information about the token
             if "id_token" in token_response:
+                print("\nToken:\n" + token_response["id_token"])
                 info = get_token_info(token_response["id_token"])
                 print("\nToken Info:\n" + json.dumps(info, indent=2))
 
